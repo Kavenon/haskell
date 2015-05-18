@@ -1,9 +1,8 @@
 import Data.Char
 import System.Environment
-import Control.Monad
-import Data.Set
 import System.IO  
 import Control.Monad
+import Data.List.Split
 
 data Kolor = Bialy | Czarny deriving (Eq)
 data Bierka = Krol | Hetman | Pionek | Skoczek | Goniec | Wieza
@@ -20,19 +19,27 @@ changeBierkaToChar Skoczek = 'N'
 changeBierkaToChar Goniec = 'B'
 changeBierkaToChar Wieza = 'R'
 
+changeCharToBierka 'K' = Krol;
+changeCharToBierka 'Q' = Hetman;
+changeCharToBierka 'P' = Pionek;
+changeCharToBierka 'N' = Skoczek;
+changeCharToBierka 'B' = Goniec;
+changeCharToBierka 'R' = Wieza;
+
 poleToChar (Empty) = '.' 
 poleToChar (Pole bierka kolor) 
 	| kolor == Bialy = toUpper bierkaChar
 	| kolor == Czarny = toLower bierkaChar
 	where bierkaChar = changeBierkaToChar bierka
 
+{- przykladowe dane -}
 c = SzachownicaCol (Pole Krol Bialy )
 a = SzachownicaCol (Pole Krol Czarny )
 b = SzachownicaRow [c,a]
-
 szach = Szachownica [b]
 
-wyswietlCol (SzachownicaCol a) = charToString(poleToChar a);
+{- wyswietlanie -}
+wyswietlCol (SzachownicaCol a) = charToString(poleToChar a)
 
 wyswietlRow (SzachownicaRow []) = "\n"
 wyswietlRow (SzachownicaRow (a:as)) =  wyswietlCol a ++ (wyswietlRow (SzachownicaRow as))
@@ -40,10 +47,33 @@ wyswietlRow (SzachownicaRow (a:as)) =  wyswietlCol a ++ (wyswietlRow (Szachownic
 wyswietlSzachownica (Szachownica []) = "\nkoniec szachownicy \n"
 wyswietlSzachownica (Szachownica (a:as)) = wyswietlRow a ++ (wyswietlSzachownica(Szachownica as))
 
+{- wczytywanie -}
+wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
+listaRzedow = splitOn "\n" wejsciowaPlansza
 
-{- read from file -}
+przetworzCol a 
+	| isUpper a = (Pole (changeCharToBierka(bierka)) Bialy)
+	| otherwise = (Pole (changeCharToBierka(bierka)) Czarny)
+	where bierka = toUpper a
 
-t = readFile "plansza"
+
+przetworzRzad [] = []
+przetworzRzad (a:as) = (przetworzCol c) : przetworzRzad(as)
+{-
+utworzRzad (a:as) = przetworzRzad a : utworzRzad(as)
+
+przetworzListeRzedow [] = []
+przetworzListeRzedow (a:as) = (SzachownicaRow (przetworzRzad(a))) : przetworzListeRzedow(as)
+
+utworzSzachownice a = Szachownica (przetworzListeRzedow a)-}
+
+
+
+
+
+{- read from file 
+
+t = readFile "plansza"-}
 
 {-instance Show SzachownicaCol where
   show (SzachownicaCol (Pole bierka kolor)) = charToString (poleToChar(Pole bierka kolor) )
@@ -51,15 +81,13 @@ t = readFile "plansza"
 instance Show SzachownicaRow where
   show (SzachownicaRow a) = show a-}
               
-{-  instance Show PionGracza where
+instance Show Pole where
                 show Empty = "Empty"
-                show (Pion bierka kolor) = "Figura: " ++ show bierka -}
+                show (Pole bierka kolor) = "Figura: " ++ show (changeBierkaToChar(bierka))
                
 
-
+{- TOOLS -}
 charToString :: Char -> String
 charToString = (:[])
-
-
 
 
