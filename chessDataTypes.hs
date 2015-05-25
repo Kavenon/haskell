@@ -5,13 +5,14 @@ import Control.Monad
 import Data.List.Split
 
 data Kolor = Bialy | Czarny deriving (Eq)
-data Bierka = Krol | Hetman | Pionek | Skoczek | Goniec | Wieza
+data Bierka = Puste | Krol | Hetman | Pionek | Skoczek | Goniec | Wieza
 data Pole = Empty | Pole Bierka Kolor
 
 data SzachownicaCol = SzachownicaCol Pole
 data SzachownicaRow = SzachownicaRow [SzachownicaCol]
 data Szachownica = Szachownica [SzachownicaRow]
 
+changeBierkaToChar Puste = '.'
 changeBierkaToChar Krol = 'K'
 changeBierkaToChar Hetman = 'Q'
 changeBierkaToChar Pionek = 'P'
@@ -25,6 +26,7 @@ changeCharToBierka 'P' = Pionek;
 changeCharToBierka 'N' = Skoczek;
 changeCharToBierka 'B' = Goniec;
 changeCharToBierka 'R' = Wieza;
+changeCharToBierka '.' = Puste;
 
 poleToChar (Empty) = '.' 
 poleToChar (Pole bierka kolor) 
@@ -57,15 +59,35 @@ przetworzCol a
 	where bierka = toUpper a
 
 
-przetworzRzad [] = []
-przetworzRzad (a:as) = (przetworzCol c) : przetworzRzad(as)
-{-
+{-przetworzRzad [] = []
+przetworzRzad (a:as) = (przetworzCol a) : przetworzRzad(as)
+
 utworzRzad (a:as) = przetworzRzad a : utworzRzad(as)
 
 przetworzListeRzedow [] = []
-przetworzListeRzedow (a:as) = (SzachownicaRow (przetworzRzad(a))) : przetworzListeRzedow(as)
+przetworzListeRzedow (a:as) = (SzachownicaRow (przetworzRzad(a))) : przetworzListeRzedow(as)-}
 
-utworzSzachownice a = Szachownica (przetworzListeRzedow a)-}
+
+
+listaKolumnToListaRzedow lst = map SzachownicaRow lst
+listaPolToListaKolumn lst = map SzachownicaCol lst
+listaZnakowToPole lst = map przetworzCol lst
+
+
+
+--utworzSzachownice a = Szachownica (przetworzListeRzedow a)
+
+
+lista = lines wejsciowaPlansza;
+
+
+
+
+
+l1 = listaZnakowToPole "kK"
+l2 = listaPolToListaKolumn l1 -- [SzachownicaCol]
+l3 = listaKolumnToListaRzedow [l2]
+l4 = Szachownica l3
 
 
 
