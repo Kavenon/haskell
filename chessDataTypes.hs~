@@ -34,55 +34,42 @@ poleToChar (Pole bierka kolor)
 	| kolor == Czarny = toLower bierkaChar
 	where bierkaChar = changeBierkaToChar bierka
 
-{- przykladowe dane 
-c = SzachownicaCol (Pole Krol Bialy )
-a = SzachownicaCol (Pole Krol Czarny )
-b = SzachownicaRow [c,a]
-szach = Szachownica [b]-}
 
-{- wyswietlanie -}
-wyswietlCol a = charToString(poleToChar a)
-
-wyswietlRow (SzachownicaRow []) = "\n"
-wyswietlRow (SzachownicaRow (a:as)) =  wyswietlCol a ++ (wyswietlRow (SzachownicaRow as))
-
-wyswietlSzachownica (Szachownica []) = "\nkoniec szachownicy \n"
-wyswietlSzachownica (Szachownica (a:as)) = wyswietlRow a ++ (wyswietlSzachownica(Szachownica as))
 
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
---listaRzedow = splitOn "\n" wejsciowaPlansza
 
-przetworzCol a 
+{- tworzenie szachownicy -}
+przetworzListeRzedow lst = Szachownica $ map utworzRzad lst
+utworzRzad lst = SzachownicaRow $map utworzPole lst
+utworzPole a 
 	| isUpper a = (Pole (changeCharToBierka(bierka)) Bialy)
 	| otherwise = (Pole (changeCharToBierka(bierka)) Czarny)
 	where bierka = toUpper a
 
-
-
-
-listaRzedow = lines wejsciowaPlansza;
-
---
-przetworzListeRzedow lst = Szachownica $ map utworzRzad lst
-utworzRzad lst = SzachownicaRow $map utworzPole lst
-utworzPole a = przetworzCol a
---
+utworzSzachownice plansza = przetworzListeRzedow listaRzedow
+			where listaRzedow = lines plansza		
+	
 
 
 
 
 
+{- wyswietlanie -}
+wyswietlPole a = charToString(poleToChar a)
 
+wyswietlRow (SzachownicaRow []) = "\n"
+wyswietlRow (SzachownicaRow (a:as)) =  wyswietlPole a ++ (wyswietlRow (SzachownicaRow as))
 
-
-
+wyswietlSzachownica (Szachownica []) = ""
+wyswietlSzachownica (Szachownica (a:as)) = wyswietlRow a ++ (wyswietlSzachownica(Szachownica as))
 
 instance Show Pole where
                 show Empty = "Empty"
                 show (Pole bierka kolor) = "Figura: " ++ show (changeBierkaToChar(bierka))
                
-
+instance Show Szachownica where
+		show a = wyswietlSzachownica a
 {- TOOLS -}
 charToString :: Char -> String
 charToString = (:[])
