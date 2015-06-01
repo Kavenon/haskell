@@ -51,7 +51,7 @@ wyswietlSzachownica (Szachownica (a:as)) = wyswietlRow a ++ (wyswietlSzachownica
 
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
-
+--listaRzedow = splitOn "\n" wejsciowaPlansza
 
 przetworzCol a 
 	| isUpper a = (Pole (changeCharToBierka(bierka)) Bialy)
