@@ -1,16 +1,16 @@
 import Data.Char
 import System.Environment
 import System.IO  
-import Control.Monad
-import Data.List.Split
 
-data Kolor = Bialy | Czarny deriving (Eq)
-data Bierka = Puste | Krol | Hetman | Pionek | Skoczek | Goniec | Wieza
-data Pole = Empty | Pole Bierka Kolor
+import Data.Sequence
+import qualified Data.Foldable as Foldable
 
---data SzachownicaCol = SzachownicaCol Pole
-data SzachownicaRow = SzachownicaRow [Pole]
-data Szachownica = Szachownica [SzachownicaRow]
+data Kolor = Bialy | Czarny deriving (Eq,Show)
+data Bierka = Puste | Krol | Hetman | Pionek | Skoczek | Goniec | Wieza  deriving (Eq,Show)
+data Pole = Empty | Pole Bierka Kolor deriving (Eq)
+
+data SzachownicaRow = SzachownicaRow [Pole] deriving (Eq)
+data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
 
 changeBierkaToChar Puste = '.'
 changeBierkaToChar Krol = 'K'
@@ -27,6 +27,7 @@ changeCharToBierka 'N' = Skoczek;
 changeCharToBierka 'B' = Goniec;
 changeCharToBierka 'R' = Wieza;
 changeCharToBierka '.' = Puste
+
 
 poleToChar (Empty) = '.' 
 poleToChar (Pole bierka kolor) 
@@ -49,10 +50,6 @@ utworzPole a
 
 utworzSzachownice plansza = przetworzListeRzedow listaRzedow
 			where listaRzedow = lines plansza		
-	
-
-
-
 
 
 {- wyswietlanie -}
@@ -64,14 +61,44 @@ wyswietlRow (SzachownicaRow (a:as)) =  wyswietlPole a ++ (wyswietlRow (Szachowni
 wyswietlSzachownica (Szachownica []) = ""
 wyswietlSzachownica (Szachownica (a:as)) = wyswietlRow a ++ (wyswietlSzachownica(Szachownica as))
 
+
+{- zmiana do listy list -}
+{-}
+wP a = charToString(poleToChar a)
+wR (SzachownicaRow lst) = map wP lst
+wS (Szachownica lst) =  map wR lst-}
+
+{- domyslna szachownica-}
+szachownica = utworzSzachownice wejsciowaPlansza
+
+
 instance Show Pole where
-                show Empty = "Empty"
-                show (Pole bierka kolor) = "Figura: " ++ show (changeBierkaToChar(bierka))
+                show Empty = "."
+                show a = show (poleToChar(a))
                
 instance Show Szachownica where
 		show a = wyswietlSzachownica a
+nthRowFromSzachownica :: Szachownica -> Int -> SzachownicaRow
+nthRowFromSzachownica (Szachownica a) nth = a !! nth
+
+{- usuwanie pionka (wstawienie kropki) -}
+updateRow :: SzachownicaRow -> Int ->  Pole -> SzachownicaRow
+updateRow (SzachownicaRow lst) col pole = SzachownicaRow ( Foldable.toList ( update col pole $ (fromList lst)))
+
+changeElemInRow :: [SzachownicaRow] -> (Int,Int) -> Pole -> [SzachownicaRow]
+changeElemInRow (x:xs) (0,col) pole = (updateRow x col pole):xs
+changeElemInRow (x:xs) (row,col) pole = x:(changeElemInRow xs (row-1, col) pole)
+
+updateSzachownica :: Szachownica -> (Int,Int) -> Pole -> Szachownica
+updateSzachownica (Szachownica rowLst) (row, col) pole = Szachownica $ changeElemInRow rowLst (row,col) pole
+
+
+usunPionka :: Szachownica -> (Int,Int) -> Szachownica
+usunPionka szachownica (row, col) = updateSzachownica szachownica (row,col) Empty
+
 {- TOOLS -}
 charToString :: Char -> String
 charToString = (:[])
 
-
+printElements :: [String] -> IO()
+printElements = mapM_ putStrLn
