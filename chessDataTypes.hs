@@ -78,23 +78,52 @@ instance Show Pole where
                
 instance Show Szachownica where
 		show a = wyswietlSzachownica a
+
 nthRowFromSzachownica :: Szachownica -> Int -> SzachownicaRow
 nthRowFromSzachownica (Szachownica a) nth = a !! nth
 
+nthPoleFromRow :: SzachownicaRow -> Int -> Pole
+nthPoleFromRow (SzachownicaRow a) nth = a !! nth
+
+
+updateSingleRow :: SzachownicaRow -> Int ->  Pole -> SzachownicaRow
+updateSingleRow (SzachownicaRow lst) col pole = SzachownicaRow ( Foldable.toList ( update col pole $ (fromList lst)))
+
+updateRows :: [SzachownicaRow] -> (Int,Int) -> Pole -> [SzachownicaRow]
+updateRows (x:xs) (0,col) pole = (updateSingleRow x col pole):xs
+updateRows (x:xs) (row,col) pole = x:(updateRows xs (row-1, col) pole)
+
+{- umiesc pion na polu -}
+umiescPionNaPolu :: Szachownica -> (Int,Int) -> Pole -> Szachownica
+umiescPionNaPolu (Szachownica rowLst) (row, col) pole = Szachownica $ updateRows rowLst (row,col) pole
+
 {- usuwanie pionka (wstawienie kropki) -}
-updateRow :: SzachownicaRow -> Int ->  Pole -> SzachownicaRow
-updateRow (SzachownicaRow lst) col pole = SzachownicaRow ( Foldable.toList ( update col pole $ (fromList lst)))
-
-changeElemInRow :: [SzachownicaRow] -> (Int,Int) -> Pole -> [SzachownicaRow]
-changeElemInRow (x:xs) (0,col) pole = (updateRow x col pole):xs
-changeElemInRow (x:xs) (row,col) pole = x:(changeElemInRow xs (row-1, col) pole)
-
-updateSzachownica :: Szachownica -> (Int,Int) -> Pole -> Szachownica
-updateSzachownica (Szachownica rowLst) (row, col) pole = Szachownica $ changeElemInRow rowLst (row,col) pole
-
-
 usunPionka :: Szachownica -> (Int,Int) -> Szachownica
-usunPionka szachownica (row, col) = updateSzachownica szachownica (row,col) Empty
+usunPionka szachownica (row, col) = umiescPionNaPolu szachownica (row,col) Empty
+
+{- postaw kropke na starym miejscu, pionek na nowym -}
+przesunPionekNaPole :: Szachownica -> (Int,Int) ->  (Int,Int) -> Szachownica
+przesunPionekNaPole szachownica (rowFrom, colFrom) (rowTo, colTo)  = umiescPionNaPolu (usunPionka szachownica (rowFrom, colFrom)) (rowTo,colTo) (nthPoleFromRow (nthRowFromSzachownica szachownica rowFrom) colFrom)
+
+{- mozliwe ruchy -}
+
+moves :: Bierka -> [(Int, Int)]
+moves Puste = []
+moves Krol = [(x, y) | x<-[-1..1], y<- [-1..1], (x, y) /=(0, 0)]
+moves Hetman = [(x, y) | x<-[-7..7], y<-[-7..7], (x, y) /= (0, 0)]
+moves Wieza = [(x, 0) | x<-[-7..7], x/=0] ++ [(0, y) | y<-[-7..7], y/=0]
+moves Goniec = [(x, x) | x<- [-7..7], x /= 0] ++ [(x, -x) | x<- [-7..7], x/=0]
+moves Skoczek = [(x, y) | x<-[-2, -1, 1, 2], y<-[-2, -1, 1, 2], (abs y) /= (abs x)]
+moves Pionek = [(-1, 1), (0, 1), (1, 1), (0, -1), (-1, -1), (1, -1)]
+
+
+allMoves :: Bierka -> [(Int, Int)]
+allMoves bierka
+  | bierka == Krol = moves Krol ++ [(0, 2)] ++ [(-2, 0)]
+  | bierka == Pionek = moves Pionek ++ [(0, 2), (0, -2)]
+  | otherwise = moves bierka
+
+
 
 {- TOOLS -}
 charToString :: Char -> String
