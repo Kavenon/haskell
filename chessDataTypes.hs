@@ -5,6 +5,7 @@ import Data.Tree
 
 
 
+
 import Data.Sequence
 import qualified Data.Foldable as Foldable
 
@@ -17,7 +18,7 @@ data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
 
 {- szachownica, ostatni ruch -}
 data Stan = Stan {
-    board :: Szachownica, kolor :: Kolor
+    board :: Szachownica, poprzedniRuch :: Kolor
 } deriving (Eq,Show)
 
 changeBierkaToChar Puste = '.'
@@ -44,6 +45,7 @@ poleToChar (Pole bierka kolor)
 	where bierkaChar = changeBierkaToChar bierka
 
 isEmpty :: Pole -> Bool
+isEmpty Empty = True
 isEmpty (Pole bierka kolor)
     | bierka == Puste = True
     | otherwise = False
@@ -60,6 +62,14 @@ bierkaValue Krol = 100000
 
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
+t = "..b.....\n" ++
+    "........\n" ++
+    "....P...\n" ++
+    "........\n" ++
+    "........\n" ++
+    "........\n" ++
+    "PPPPPPPP\n" ++
+    "RNBQKBNR"
 
 {- tworzenie szachownicy -}
 przetworzListeRzedow lst = Szachownica $ map utworzRzad lst
@@ -145,10 +155,12 @@ moves Goniec = [(x, x) | x<- [-7..7], x /= 0] ++ [(x, -x) | x<- [-7..7], x/=0]
 moves Skoczek = [(x, y) | x<-[-2, -1, 1, 2], y<-[-2, -1, 1, 2], (abs y) /= (abs x)]
 moves Pionek = [(-1, 1), (1, 0), (1, 1), (-1, 0), (-1, -1), (1, -1)]
 
+getBierkaFromPole Empty = Puste
 getBierkaFromPole (Pole bierka kolor) = bierka
 
 getKolorBierki :: Pole -> Kolor
 getKolorBierki (Pole bierka kolor) = kolor
+
 allMoves :: Bierka -> [(Int, Int)]
 allMoves bierka
   | bierka == Krol = moves Krol ++ [(2, 0)] ++ [(0, -2)]
@@ -221,15 +233,49 @@ sprawdzSamobuje szachownica (rowFrom, colFrom) (rowTo, colTo)
     | isEmptyField szachownica (rowFrom+rowTo, colFrom+colTo) = True
     | otherwise = (getKolorBierki (pionRowCol szachownica (rowFrom,colFrom)) /= getKolorBierki (pionRowCol szachownica (rowFrom+rowTo, colFrom+colTo)))
 
+toZero :: Int -> Int
+toZero a
+    | a == 0 = 0
+    | otherwise = if a > 0 then a-1 else a+1
+
+sprawdzPoDrodzeRekurencja :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
+sprawdzPoDrodzeRekurencja szachownica (rowFrom, colFrom) (0, 0) = True
+sprawdzPoDrodzeRekurencja szachownica (rowFrom, colFrom) (rowTo, colTo)
+    | isEmptyField szachownica (rowFrom+rowTo, colFrom+colTo) = sprawdzPoDrodzeRekurencja szachownica (rowFrom, colFrom) (row,col)
+    | otherwise = False
+    where row = toZero rowTo
+          col = toZero colTo
+
+sprawdzPoDrodze :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
+sprawdzPoDrodze szachownica (rowFrom, colFrom) (rowTo, colTo)
+    | bierka == Skoczek = True
+    | (wolnaDroga && isEmptyField szachownica (rowFrom+rowTo,colFrom+colTo)) ||
+      (wolnaDroga && (isEmptyField szachownica (rowFrom+rowTo, colFrom+colTo)) == False) = True
+    | otherwise = False
+    where   pole = pionRowCol szachownica (rowFrom,colFrom)
+            bierka = getBierkaFromPole pole
+            kolorBierki = getKolorBierki pole
+            wolnaDroga = sprawdzPoDrodzeRekurencja szachownica (rowFrom, colFrom) (toZero $rowTo, toZero $colTo)
+
+sprawdzBicieKrola :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
+sprawdzBicieKrola szachownica (rowFrom, colFrom) (rowTo, colTo)
+  | bierkaDest == Krol = False
+  | otherwise = True
+  where   poleDest = pionRowCol szachownica (rowFrom+rowTo,colFrom+colTo)
+          bierkaDest = getBierkaFromPole poleDest
 
 {- nie trzeba sprawdzac dla pustego, bo w allMovesForPole da pusta liste -}
-sprawdzRuch :: Szachownica ->  (Int, Int) -> (Int, Int) -> Bool
-sprawdzRuch szachownica (rowFrom, colFrom) (rowTo, colTo)
+sprawdzRuch :: Szachownica ->  (Int, Int) ->  Kolor -> (Int, Int) -> Bool
+sprawdzRuch szachownica (rowFrom, colFrom) kolor (rowTo, colTo)
     | (
+    getKolorBierki pole == kolor &&
     sprawdzPozycje(rowAfter,colAfter) &&
     sprawdzRuchPionka szachownica (rowFrom, colFrom) (rowTo,colTo) &&
     sprawdzSpecjalneRuchy szachownica (rowFrom, colFrom) (rowTo, colTo) &&
-    sprawdzSamobuje szachownica (rowFrom, colFrom) (rowTo, colTo)
+    sprawdzSamobuje szachownica (rowFrom, colFrom) (rowTo, colTo) &&
+    sprawdzPoDrodze szachownica (rowFrom, colFrom) (rowTo, colTo) &&
+    sprawdzBicieKrola szachownica (rowFrom, colFrom) (rowTo, colTo)
+    -- todo: sprawdz mat / pat?
 
     )= True
     | otherwise = False
@@ -249,11 +295,22 @@ doMove szachownica (row,col) (movR, movC) = przesunPionekNaPole szachownica (row
 
 {- /todo: sprawdzac brzegi planszy przy pobieraniu elementu -}
 {- zrefaktorowac listaRuchowZPola ruchyZPola -}
-listaRuchowZPola szachownica (row,col) = Prelude.filter (sprawdzRuch szachownica (row,col))  (allMovesForPole  (pionRowCol szachownica (row,col)))
 
-ruchyZPola :: Szachownica -> (Int, Int) -> [Szachownica]
-ruchyZPola szachownica (row,col) =  map (doMove szachownica (row,col)) $ Prelude.filter (sprawdzRuch szachownica (row,col)) ruchy
-    where ruchy = allMovesForPole (pionRowCol szachownica (row,col))
+listaRuchowZPola :: Szachownica -> (Int, Int) -> Kolor -> [(Int,Int)]
+listaRuchowZPola szachownica (row,col) kolor = Prelude.filter (sprawdzRuch szachownica (row,col) kolor)  (allMovesForPole  (pionRowCol szachownica (row,col)))
+
+ruchyZPola :: Szachownica -> (Int, Int) -> Kolor -> [Szachownica]
+ruchyZPola szachownica (row,col) kolor =  map (doMove szachownica (row,col)) (listaRuchowZPola szachownica (row,col) kolor)
+
+
+ruchyZRzedu :: Szachownica ->  (Int, Int) -> Kolor -> [Szachownica]
+ruchyZRzedu szachownica (row,8) kolor = []
+ruchyZRzedu szachownica (row,col) kolor = ruchyZPola szachownica (row,col) kolor ++ (ruchyZRzedu szachownica (row,col+1) kolor)
+
+ruchyZSzachownicyImpl szachownica (8,0) kolor = []
+ruchyZSzachownicyImpl szachownica (row,col) kolor = ruchyZRzedu szachownica (row,0) kolor  ++ (ruchyZSzachownicyImpl szachownica (row+1,0) kolor)
+
+ruchyZSzachownicy szachownica kolor = ruchyZSzachownicyImpl szachownica (0,0) kolor
 
 
 
@@ -261,6 +318,39 @@ ruchyZPola szachownica (row,col) =  map (doMove szachownica (row,col)) $ Prelude
 generujMozliwePlansze :: Szachownica -> Kolor -> Szachownica
 generujMozliwePlansze szachownica kolor = -}
 
+poczatkowyStan = Stan szachownica Czarny
+
+drzewoStanow = Node poczatkowyStan []
+
+--utworzDrzewo stan =
+utworzStan :: Kolor -> Szachownica -> Stan
+utworzStan kolor ruch = Stan ruch kolor
+
+ruchyDoStanow :: [Szachownica] -> Kolor -> [Stan]
+ruchyDoStanow ruchy kolor = map (utworzStan kolor) ruchy
+
+stanyRuchow = ruchyDoStanow (ruchyZSzachownicy szachownica Bialy) Bialy
+
+--drzewoStanow >>= (\x-> Node (x) [Node (k) [] | k <- stanyRuchow])
+
+-- ruchyDoStanow (ruchyZSzachownicy szachownica Bialy) Bialy
+
+generujDrzewo :: Stan -> Int -> Tree Stan
+generujDrzewo poczatkowyStan 1 =  Node poczatkowyStan [Node (k) [] | k <- stanyRuchow]
+   where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
+         stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
+
+
+generujDrzewo poczatkowyStan level =  Node poczatkowyStan [Node (k) [generujDrzewo k $level-1] | k <- stanyRuchow]
+    where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
+          stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
+
+
+
+
+toggleKolor kolor
+ | kolor == Bialy = Czarny
+ | otherwise = Bialy
 
 
 {- TOOLS -}
