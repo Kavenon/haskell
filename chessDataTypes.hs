@@ -2,10 +2,6 @@ import Data.Char
 import System.Environment
 import System.IO
 import Data.Tree
-
-
-
-
 import Data.Sequence
 import qualified Data.Foldable as Foldable
 
@@ -18,7 +14,7 @@ data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
 
 {- szachownica, ostatni ruch -}
 data Stan = Stan {
-    board :: Szachownica, poprzedniRuch :: Kolor
+    board :: Szachownica, poprzedniRuch :: Kolor, wartosc :: Int
 } deriving (Eq,Show)
 
 changeBierkaToChar Puste = '.'
@@ -58,11 +54,11 @@ bierkaValue Skoczek = 350
 bierkaValue Goniec = 350
 bierkaValue Wieza = 525
 bierkaValue Krol = 100000
-
+bierkaValue Puste = 0
 
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
-t = "..b.....\n" ++
+t = "..b....\n" ++
     "........\n" ++
     "....P...\n" ++
     "........\n" ++
@@ -318,29 +314,34 @@ ruchyZSzachownicy szachownica kolor = ruchyZSzachownicyImpl szachownica (0,0) ko
 generujMozliwePlansze :: Szachownica -> Kolor -> Szachownica
 generujMozliwePlansze szachownica kolor = -}
 
-poczatkowyStan = Stan szachownica Czarny
+poczatkowyStan = Stan szachownica Czarny (wartoscPlanszy szachownica Czarny)
 
 drzewoStanow = Node poczatkowyStan []
+maKolor :: Kolor -> Pole -> Bool
+maKolor kolor Empty = False
+maKolor kolor (Pole bierka kolorb) = kolorb == kolor
 
---utworzDrzewo stan =
+{- wartosc planszy todo:improve ? -}
+wartoscPlanszy :: Szachownica -> Kolor -> Int
+wartoscPlanszy szachownica kolor = foldl (+) 0 wartosci
+    where pozycje = [(x, y) | x<-[0..7], y<-[0..7]]
+          pionki = map (pionRowCol szachownica) pozycje
+          bierki = map getBierkaFromPole $ Prelude.filter (maKolor kolor) pionki
+          wartosci = map bierkaValue bierki
+
+
+{- stany gry -}
 utworzStan :: Kolor -> Szachownica -> Stan
-utworzStan kolor ruch = Stan ruch kolor
+utworzStan kolor ruch = Stan ruch kolor (wartoscPlanszy ruch kolor)
 
 ruchyDoStanow :: [Szachownica] -> Kolor -> [Stan]
 ruchyDoStanow ruchy kolor = map (utworzStan kolor) ruchy
 
-stanyRuchow = ruchyDoStanow (ruchyZSzachownicy szachownica Bialy) Bialy
-
---drzewoStanow >>= (\x-> Node (x) [Node (k) [] | k <- stanyRuchow])
-
--- ruchyDoStanow (ruchyZSzachownicy szachownica Bialy) Bialy
-
+{- generowanie drzewa gry -}
 generujDrzewo :: Stan -> Int -> Tree Stan
 generujDrzewo poczatkowyStan 1 =  Node poczatkowyStan [Node (k) [] | k <- stanyRuchow]
    where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
          stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
-
-
 generujDrzewo poczatkowyStan level =  Node poczatkowyStan [Node (k) [generujDrzewo k $level-1] | k <- stanyRuchow]
     where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
           stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
@@ -348,14 +349,10 @@ generujDrzewo poczatkowyStan level =  Node poczatkowyStan [Node (k) [generujDrze
 
 
 
-toggleKolor kolor
- | kolor == Bialy = Czarny
- | otherwise = Bialy
-
-
 {- TOOLS -}
 charToString :: Char -> String
 charToString = (:[])
 
-printElements :: [String] -> IO()
-printElements = mapM_ putStrLn
+toggleKolor kolor
+ | kolor == Bialy = Czarny
+ | otherwise = Bialy
