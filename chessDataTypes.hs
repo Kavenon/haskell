@@ -14,7 +14,7 @@ data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
 
 {- szachownica, ostatni ruch -}
 data Stan = Stan {
-    board :: Szachownica, poprzedniRuch :: Kolor, wartosc :: Int
+    board :: Szachownica, poprzedniRuch :: Kolor --, wartosc :: Int
 } deriving (Eq,Show)
 
 changeBierkaToChar Puste = '.'
@@ -53,18 +53,21 @@ bierkaValue Hetman = 1000
 bierkaValue Skoczek = 350
 bierkaValue Goniec = 350
 bierkaValue Wieza = 525
-bierkaValue Krol = 100000
+bierkaValue Krol = 10000
 bierkaValue Puste = 0
+
+infinity = 10000::Int
+threshold = 9000::Int
 
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
-t = "..b....\n" ++
+t = "rnbqkbnr\n" ++
+    "pppppppp\n" ++
+    "........\n" ++
     "........\n" ++
     "....P...\n" ++
     "........\n" ++
-    "........\n" ++
-    "........\n" ++
-    "PPPPPPPP\n" ++
+    "PPPP.PPP\n" ++
     "RNBQKBNR"
 
 {- tworzenie szachownicy -}
@@ -253,6 +256,7 @@ sprawdzPoDrodze szachownica (rowFrom, colFrom) (rowTo, colTo)
             kolorBierki = getKolorBierki pole
             wolnaDroga = sprawdzPoDrodzeRekurencja szachownica (rowFrom, colFrom) (toZero $rowTo, toZero $colTo)
 
+
 sprawdzBicieKrola :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
 sprawdzBicieKrola szachownica (rowFrom, colFrom) (rowTo, colTo)
   | bierkaDest == Krol = False
@@ -269,8 +273,8 @@ sprawdzRuch szachownica (rowFrom, colFrom) kolor (rowTo, colTo)
     sprawdzRuchPionka szachownica (rowFrom, colFrom) (rowTo,colTo) &&
     sprawdzSpecjalneRuchy szachownica (rowFrom, colFrom) (rowTo, colTo) &&
     sprawdzSamobuje szachownica (rowFrom, colFrom) (rowTo, colTo) &&
-    sprawdzPoDrodze szachownica (rowFrom, colFrom) (rowTo, colTo) &&
-    sprawdzBicieKrola szachownica (rowFrom, colFrom) (rowTo, colTo)
+    sprawdzPoDrodze szachownica (rowFrom, colFrom) (rowTo, colTo)
+    --sprawdzBicieKrola szachownica (rowFrom, colFrom) (rowTo, colTo)
     -- todo: sprawdz mat / pat?
 
     )= True
@@ -314,25 +318,28 @@ ruchyZSzachownicy szachownica kolor = ruchyZSzachownicyImpl szachownica (0,0) ko
 generujMozliwePlansze :: Szachownica -> Kolor -> Szachownica
 generujMozliwePlansze szachownica kolor = -}
 
-poczatkowyStan = Stan szachownica Czarny (wartoscPlanszy szachownica Czarny)
+poczatkowyStan = Stan szachownica Czarny -- (wartoscPlanszy szachownica Czarny)
 
 drzewoStanow = Node poczatkowyStan []
+
 maKolor :: Kolor -> Pole -> Bool
 maKolor kolor Empty = False
 maKolor kolor (Pole bierka kolorb) = kolorb == kolor
 
+
 {- wartosc planszy todo:improve ? -}
 wartoscPlanszy :: Szachownica -> Kolor -> Int
-wartoscPlanszy szachownica kolor = foldl (+) 0 wartosci
+wartoscPlanszy szachownica kolor = foldl (+) 0 wartosciKolor
     where pozycje = [(x, y) | x<-[0..7], y<-[0..7]]
           pionki = map (pionRowCol szachownica) pozycje
           bierki = map getBierkaFromPole $ Prelude.filter (maKolor kolor) pionki
           wartosci = map bierkaValue bierki
+          wartosciKolor = map (mnoznik kolor *) wartosci
 
 
 {- stany gry -}
 utworzStan :: Kolor -> Szachownica -> Stan
-utworzStan kolor ruch = Stan ruch kolor (wartoscPlanszy ruch kolor)
+utworzStan kolor ruch = Stan ruch kolor --(wartoscPlanszy ruch kolor)
 
 ruchyDoStanow :: [Szachownica] -> Kolor -> [Stan]
 ruchyDoStanow ruchy kolor = map (utworzStan kolor) ruchy
@@ -346,6 +353,15 @@ generujDrzewo poczatkowyStan level =  Node poczatkowyStan [Node (k) [generujDrze
     where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
           stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
 
+{- chyba trzeba zmienic poprzedniruch na aktualny ruch -}
+minimax :: Tree Stan -> Int
+minimax (Node (Stan b c) []) = wartoscPlanszy b c
+minimax (Node (Stan _ Bialy) xs) = maximum (map minimax xs)
+minimax (Node (Stan _ Czarny) xs) = minimum (map minimax xs)
+
+
+
+
 
 
 
@@ -356,3 +372,6 @@ charToString = (:[])
 toggleKolor kolor
  | kolor == Bialy = Czarny
  | otherwise = Bialy
+
+mnoznik Czarny = -1
+mnoznik Bialy = 1
