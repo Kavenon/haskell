@@ -256,13 +256,13 @@ sprawdzPoDrodze szachownica (rowFrom, colFrom) (rowTo, colTo)
             kolorBierki = getKolorBierki pole
             wolnaDroga = sprawdzPoDrodzeRekurencja szachownica (rowFrom, colFrom) (toZero $rowTo, toZero $colTo)
 
-
+{-
 sprawdzBicieKrola :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
 sprawdzBicieKrola szachownica (rowFrom, colFrom) (rowTo, colTo)
   | bierkaDest == Krol = False
   | otherwise = True
   where   poleDest = pionRowCol szachownica (rowFrom+rowTo,colFrom+colTo)
-          bierkaDest = getBierkaFromPole poleDest
+          bierkaDest = getBierkaFromPole poleDest-}
 
 {- nie trzeba sprawdzac dla pustego, bo w allMovesForPole da pusta liste -}
 sprawdzRuch :: Szachownica ->  (Int, Int) ->  Kolor -> (Int, Int) -> Bool
@@ -353,14 +353,16 @@ generujDrzewo poczatkowyStan level =  Node poczatkowyStan [Node (k) [generujDrze
     where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
           stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
 
-{- chyba trzeba zmienic poprzedniruch na aktualny ruch -}
-minimax :: Tree Stan -> Int
-minimax (Node (Stan b c) []) = wartoscPlanszy b c
-minimax (Node (Stan _ Bialy) xs) = maximum (map minimax xs)
-minimax (Node (Stan _ Czarny) xs) = minimum (map minimax xs)
+{- ???chyba trzeba zmienic poprzedniruch na aktualny ruch -}
+minimax :: Tree Stan -> (Int, [Stan])
+minimax (Node stan@(Stan b c) []) = (wartoscPlanszy b c, [stan])
+minimax (Node stan@(Stan _ Bialy) xs) = maximum (map minimax xs)
+minimax (Node stan@(Stan _ Czarny) xs) = minimum (map minimax xs)
 
 
 
+instance Ord Stan where
+    compare (Stan a c) (Stan b c2) = compare (wartoscPlanszy a c) (wartoscPlanszy b c2)
 
 
 
