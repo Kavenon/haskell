@@ -66,6 +66,8 @@ threshold = 9000::Int
 
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
+
+{- do testow -}
 t = "rnbqkbnr\n" ++
     "p.pppppp\n" ++
     ".P......\n" ++
@@ -75,13 +77,27 @@ t = "rnbqkbnr\n" ++
     "PpPBP.KP\n" ++
     "R....Q.R"
 y = "rnbqkbnr\n" ++
-    "pppppppp\n" ++
+    "ppp.pppp\n" ++
     "........\n" ++
     "........\n" ++
     "........\n" ++
-    "........\n" ++
+    "...p....\n" ++
     "PPPPPPPP\n" ++
     "RNBQKBNR"
+
+z = "rnbqkbnr\n" ++
+    "pppppppp\n" ++
+    "...P....\n" ++
+    "........\n" ++
+    "........\n" ++
+    "........\n" ++
+    "PPP.PPPP\n" ++
+    "RNBQKBNR"
+
+sz = utworzSzachownice z
+ss = Stan sz Bialy
+gs = generujDrzewo 2 ss
+{- do testow -}
 
 {- tworzenie szachownicy -}
 przetworzListeRzedow lst = Szachownica $ map utworzRzad lst
