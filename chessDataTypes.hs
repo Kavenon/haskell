@@ -1,9 +1,14 @@
 import Data.Char
 import System.Environment
 import System.IO
+import System.IO.Unsafe
 import Data.Tree
 import Data.Sequence
+import System.Time
+import System.Random
 import qualified Data.Foldable as Foldable
+import Debug.Trace (traceShow)
+import qualified Data.List as List (sort,group,nub,filter,map,length)
 
 data Kolor = Bialy | Czarny deriving (Eq,Show)
 data Bierka = Puste | Krol | Hetman | Pionek | Skoczek | Goniec | Wieza  deriving (Eq,Show)
@@ -15,7 +20,7 @@ data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
 {- szachownica, ostatni ruch -}
 data Stan = Stan {
     board :: Szachownica, poprzedniRuch :: Kolor --, wartosc :: Int
-} deriving (Eq,Show)
+} deriving (Eq)
 
 changeBierkaToChar Puste = '.'
 changeBierkaToChar Krol = 'K'
@@ -62,12 +67,20 @@ threshold = 9000::Int
 {- wczytywanie -}
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
 t = "rnbqkbnr\n" ++
+    "p.pppppp\n" ++
+    ".P......\n" ++
+    "........\n" ++
+    "........\n" ++
+    "........\n" ++
+    "PpPBP.KP\n" ++
+    "R....Q.R"
+y = "rnbqkbnr\n" ++
     "pppppppp\n" ++
     "........\n" ++
     "........\n" ++
-    "....P...\n" ++
     "........\n" ++
-    "PPPP.PPP\n" ++
+    "........\n" ++
+    "PPPPPPPP\n" ++
     "RNBQKBNR"
 
 {- tworzenie szachownicy -}
@@ -144,11 +157,10 @@ przesunPionekNaPole :: Szachownica -> (Int,Int) ->  (Int,Int) -> Szachownica
 przesunPionekNaPole szachownica (rowFrom, colFrom) (rowTo, colTo)  = umiescPionNaPolu (usunPionka szachownica (rowFrom, colFrom)) (rowTo,colTo) (nthPoleFromRow (nthRowFromSzachownica szachownica rowFrom) colFrom)
 
 {- mozliwe ruchy -}
-
 moves :: Bierka -> [(Int, Int)]
 moves Puste = []
 moves Krol = [(x, y) | x<-[-1..1], y<- [-1..1], (x, y) /=(0, 0)]
-moves Hetman = [(x, y) | x<-[-7..7], y<-[-7..7], (x, y) /= (0, 0)]
+moves Hetman = unique (moves Krol ++ moves Goniec ++ moves Wieza) -- [(x, y) | x<-[-7..7], y<-[-7..7], (x, y) /= (0, 0)] --
 moves Wieza = [(x, 0) | x<-[-7..7], x/=0] ++ [(0, y) | y<-[-7..7], y/=0]
 moves Goniec = [(x, x) | x<- [-7..7], x /= 0] ++ [(x, -x) | x<- [-7..7], x/=0]
 moves Skoczek = [(x, y) | x<-[-2, -1, 1, 2], y<-[-2, -1, 1, 2], (abs y) /= (abs x)]
@@ -179,8 +191,8 @@ sprawdzPozycje (x, y)
 sprawdzRuchPionka :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
 sprawdzRuchPionka szachownica (rowFrom,colFrom) (rowTo, colTo)
     | bierka /= Pionek = True
-    | move == (1, 0) && kolorBierki == Czarny = True
-    | move == (-1, 0) && kolorBierki == Bialy = True
+    | move == (1, 0) && kolorBierki == Czarny && isEmptyField szachownica (rowAfter, colAfter)  = True
+    | move == (-1, 0) && kolorBierki == Bialy &&  isEmptyField szachownica (rowAfter, colAfter) = True
     {- bicie na skos -}
     | (move == (1, 1) || move == (1, -1)) &&
         kolorBierki == Czarny &&
@@ -202,8 +214,8 @@ sprawdzRuchPionka szachownica (rowFrom,colFrom) (rowTo, colTo)
 sprawdzSpecjalneRuchy :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
 sprawdzSpecjalneRuchy szachownica (rowFrom, colFrom) move
     {- o dwa -}
-    | (bierka == Pionek && move == (2,0) && kolorBierki == Czarny && rowFrom == 1 &&  isEmptyField szachownica (rowFrom+1, colFrom) ) = True
-    | (bierka == Pionek && move == (-2,0) && kolorBierki == Bialy && rowFrom == 6 &&  isEmptyField szachownica (rowFrom-1, colFrom) ) = True
+    | (bierka == Pionek && move == (2,0) && kolorBierki == Czarny && rowFrom == 1 &&  isEmptyField szachownica (rowFrom+1, colFrom) &&isEmptyField szachownica (rowAfter, colAfter) ) = True
+    | (bierka == Pionek && move == (-2,0) && kolorBierki == Bialy && rowFrom == 6 &&  isEmptyField szachownica (rowFrom-1, colFrom) && isEmptyField szachownica (rowAfter, colAfter) ) = True
     {- roszada -}
     | (
         move == (0,2)  && colFrom == 4 && getBierkaFromPole (pionRowCol szachownica (rowFrom,4)) == Krol && getBierkaFromPole (pionRowCol szachownica (rowFrom,7)) == Wieza &&
@@ -226,6 +238,9 @@ sprawdzSpecjalneRuchy szachownica (rowFrom, colFrom) move
     where   pole = pionRowCol szachownica (rowFrom,colFrom)
             bierka = getBierkaFromPole pole
             kolorBierki = getKolorBierki pole
+            (rowTo,colTo) = move
+            rowAfter = rowFrom + rowTo
+            colAfter = colFrom + colTo
 
 sprawdzSamobuje :: Szachownica -> (Int,Int) -> (Int,Int) -> Bool
 sprawdzSamobuje szachownica (rowFrom, colFrom) (rowTo, colTo)
@@ -294,7 +309,7 @@ doMove :: Szachownica ->  (Int, Int) -> (Int, Int) -> Szachownica
 doMove szachownica (row,col) (movR, movC) = przesunPionekNaPole szachownica (row,col) (row + movR, col + movC)
 
 {- /todo: sprawdzac brzegi planszy przy pobieraniu elementu -}
-{- zrefaktorowac listaRuchowZPola ruchyZPola -}
+
 
 listaRuchowZPola :: Szachownica -> (Int, Int) -> Kolor -> [(Int,Int)]
 listaRuchowZPola szachownica (row,col) kolor = Prelude.filter (sprawdzRuch szachownica (row,col) kolor)  (allMovesForPole  (pionRowCol szachownica (row,col)))
@@ -312,11 +327,6 @@ ruchyZSzachownicyImpl szachownica (row,col) kolor = ruchyZRzedu szachownica (row
 
 ruchyZSzachownicy szachownica kolor = ruchyZSzachownicyImpl szachownica (0,0) kolor
 
-
-
-{-
-generujMozliwePlansze :: Szachownica -> Kolor -> Szachownica
-generujMozliwePlansze szachownica kolor = -}
 
 poczatkowyStan = Stan szachownica Czarny -- (wartoscPlanszy szachownica Czarny)
 
@@ -345,27 +355,64 @@ ruchyDoStanow :: [Szachownica] -> Kolor -> [Stan]
 ruchyDoStanow ruchy kolor = map (utworzStan kolor) ruchy
 
 {- generowanie drzewa gry -}
-generujDrzewo :: Stan -> Int -> Tree Stan
-generujDrzewo poczatkowyStan 1 =  Node poczatkowyStan [Node (k) [] | k <- stanyRuchow]
-   where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
-         stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
-generujDrzewo poczatkowyStan level =  Node poczatkowyStan [Node (k) [generujDrzewo k $level-1] | k <- stanyRuchow]
+generujDrzewo :: Int -> Stan -> Tree Stan
+generujDrzewo 0 poczatkowyStan = Node poczatkowyStan []
+generujDrzewo level poczatkowyStan =  Node poczatkowyStan (map (generujDrzewo $level-1) stanyRuchow)
     where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
           stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
+
+
+
+
 
 {- ???chyba trzeba zmienic poprzedniruch na aktualny ruch -}
 minimax :: Tree Stan -> (Int, [Stan])
 minimax (Node stan@(Stan b c) []) = (wartoscPlanszy b c, [stan])
-minimax (Node stan@(Stan _ Bialy) xs) = maximum (map minimax xs)
-minimax (Node stan@(Stan _ Czarny) xs) = minimum (map minimax xs)
+minimax (Node stan@(Stan _ Czarny) xs) = let (v, lst) = maximum (map minimax xs)
+    in (v, stan : lst)
+minimax (Node stan@(Stan _ Bialy) xs) = let (v, lst) = minimum (map minimax xs)
+    in (v, stan : lst)
+
+
+nextMove :: Stan -> Stan
+nextMove stan@(Stan b c)
+    | finalStan stan = stan
+    | otherwise = nextStan
+    where drzewo = generujDrzewo 3 stan
+          mm = minimax drzewo
+          nextStan = (snd mm)!!1
+
+finalStan::Stan->Bool
+finalStan (Stan b c) = sw < threshold || c > -threshold
+    where sw = wartoscPlanszy b Bialy
+          c = wartoscPlanszy b Czarny
+
+
+
+game::Bool -> Stan -> Stan
+game False stan = stan
+game play stan = traceShow (stan) (game p nm)
+    where p = not $finalStan stan
+          nm = nextMove stan
 
 
 
 instance Ord Stan where
-    compare (Stan a c) (Stan b c2) = compare (wartoscPlanszy a c) (wartoscPlanszy b c2)
+    compare (Stan a c) (Stan b c2) = randomCompare (wartoscPlanszy a c) (wartoscPlanszy b c2)
+
+instance Show Stan where
+        show (Stan b c) = wyswietlSzachownica b ++ "\nPoprzedni ruch: " ++ show c
+
+pick :: [a] ->  a
+pick xs = unsafePerformIO(randomRIO (0, Prelude.length xs - 1) >>= return . (xs !!))
 
 
-
+randomCompare :: Int -> Int -> Ordering
+randomCompare a b
+     | a < b    = GT
+     | a > b    = LT
+     | a==b = pick [LT,GT]
+     | otherwise = EQ
 
 {- TOOLS -}
 charToString :: Char -> String
@@ -377,3 +424,6 @@ toggleKolor kolor
 
 mnoznik Czarny = -1
 mnoznik Bialy = 1
+
+unique :: Ord a => [a] -> [a]
+unique = List.nub
