@@ -13,46 +13,13 @@ import Text.ParserCombinators.Parsec
 import System.Environment
 import Control.Monad.State
 import System.Process
-
-
 import Data.Maybe
+import DataTypes
+import Testing
+import Constants
 
-data Kolor = Bialy | Czarny deriving (Eq,Show)
-data Bierka = Puste | Krol | Hetman | Pionek | Skoczek | Goniec | Wieza  deriving (Eq,Show)
-data Pole = Empty | Pole Bierka Kolor deriving (Eq)
-
-data SzachownicaRow = SzachownicaRow [Pole] deriving (Eq)
-data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
-
-{- szachownica, ostatni ruch -}
-data Stan = Stan {
-    board :: Szachownica, poprzedniRuch :: Kolor, --, wartosc :: Int
-    move :: ACN
-} deriving (Eq)
-
-
-newtype ACN = ACN (Char,Char,Char,Char)
-
-
-changeBierkaToChar Puste = '.'
-changeBierkaToChar Krol = 'K'
-changeBierkaToChar Hetman = 'Q'
-changeBierkaToChar Pionek = 'P'
-changeBierkaToChar Skoczek = 'N'
-changeBierkaToChar Goniec = 'B'
-changeBierkaToChar Wieza = 'R'
-
-changeCharToBierka 'K' = Krol;
-changeCharToBierka 'Q' = Hetman;
-changeCharToBierka 'P' = Pionek;
-changeCharToBierka 'N' = Skoczek;
-changeCharToBierka 'B' = Goniec;
-changeCharToBierka 'R' = Wieza;
-changeCharToBierka '.' = Puste
-
-
-poleToChar (Empty) = '.' 
-poleToChar (Pole bierka kolor) 
+poleToChar (Empty) = '.'
+poleToChar (Pole bierka kolor)
 	| kolor == Bialy = toUpper bierkaChar
 	| kolor == Czarny = toLower bierkaChar
 	where bierkaChar = changeBierkaToChar bierka
@@ -63,64 +30,17 @@ isEmpty (Pole bierka kolor)
     | bierka == Puste = True
     | otherwise = False
 
-{- wartosci -}
-bierkaValue :: Bierka -> Int
-bierkaValue Pionek = 100
-bierkaValue Hetman = 1000
-bierkaValue Skoczek = 350
-bierkaValue Goniec = 350
-bierkaValue Wieza = 525
-bierkaValue Krol = 10000
-bierkaValue Puste = 0
-
-infinity = 10000::Int
-threshold = 9000::Int
-
-{- wczytywanie -}
-wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
-
-{- do testow -}
-t = "rnbqkbnr\n" ++
-    "p.pppppp\n" ++
-    ".P......\n" ++
-    "........\n" ++
-    "........\n" ++
-    "........\n" ++
-    "PpPBP.KP\n" ++
-    "R....Q.R"
-y = "rnbqkbnr\n" ++
-    "ppp.pppp\n" ++
-    "........\n" ++
-    "........\n" ++
-    "........\n" ++
-    "...p....\n" ++
-    "PPPPPPPP\n" ++
-    "RNBQKBNR"
-
-z = "rnbq.bnr\n" ++
-    "pppppppp\n" ++
-    "........\n" ++
-    "........\n" ++
-    "...k....\n" ++
-    "..P.....\n" ++
-    "PP.PPPPP\n" ++
-    "RNBQKBNR"
-
-sz = utworzSzachownice z
-ss = Stan sz Czarny (ACN('0','0','0','0'))
-gs = generujDrzewo 3 ss
-{- do testow -}
 
 {- tworzenie szachownicy -}
 przetworzListeRzedow lst = Szachownica $ map utworzRzad lst
 utworzRzad lst = SzachownicaRow $map utworzPole lst
-utworzPole a 
+utworzPole a
 	| isUpper a = (Pole (changeCharToBierka(bierka)) Bialy)
 	| otherwise = (Pole (changeCharToBierka(bierka)) Czarny)
 	where bierka = toUpper a
 
 utworzSzachownice plansza = przetworzListeRzedow listaRzedow
-			where listaRzedow = lines plansza		
+			where listaRzedow = lines plansza
 
 
 {- wyswietlanie -}
@@ -133,22 +53,14 @@ wyswietlSzachownica (Szachownica []) = ""
 wyswietlSzachownica (Szachownica (a:as)) = wyswietlRow a ++ (wyswietlSzachownica(Szachownica as))
 
 
-{- zmiana do listy list -}
-{-}
-wP a = charToString(poleToChar a)
-wR (SzachownicaRow lst) = map wP lst
-wS (Szachownica lst) =  map wR lst-}
-
 {- domyslna szachownica-}
 szachownica = utworzSzachownice wejsciowaPlansza
-a = przesunPionekNaPole szachownica (6,2) (4,2)
-b = przesunPionekNaPole a (1,1) (3,1)
 
 
 instance Show Pole where
                 show Empty = "."
                 show a = show (poleToChar(a))
-               
+
 instance Show Szachownica where
 		show a = wyswietlSzachownica a
 
@@ -557,11 +469,6 @@ main = do
           goblack = evalStateT doPlay []
 
 
-instance Show ACN where
-  show (ACN (a,b,c,d)) = a:b:c:d:[]
-
-instance Eq ACN where
-    ACN (a,b,c,d) == ACN(a2,b2,c2,d2) = a == a2 && b == b2 && c == c2 && d == d2
 
 
 
