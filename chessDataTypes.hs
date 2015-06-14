@@ -472,7 +472,6 @@ type Game a = StateT ([ACN]) IO a
 
 printHistory :: [ACN] -> IO ()
 printHistory h =  do
---  hPutStrLn stderr "Game history"
   hPutStrLn stderr (show $ debugAcnMove szachownica h)
 
 
@@ -481,8 +480,8 @@ play :: String -> Game ()
 play inp = do
 
         s <- get
-        liftIO $ hPutStrLn stderr "Before parse"
-        liftIO $ printHistory s
+--        liftIO $ hPutStrLn stderr "Before parse"
+--        liftIO $ printHistory s
 
         case parse parseACN "Blad parsowania" inp of
               Left err -> fail("koniec")
@@ -490,24 +489,24 @@ play inp = do
 
         s <- get
 
-        liftIO $ hPutStrLn stderr "After parse"
-        liftIO $ printHistory s
+--        liftIO $ hPutStrLn stderr "After parse"
+--        liftIO $ printHistory s
 
         let m = nextAcnMove szachownica s
         let p =  (move m)
 
-        liftIO $ hPutStrLn stderr ("to opponent = " ++ show p)
-        liftIO $ hPutStrLn stderr ("Bialy: " ++ (show $ wartoscPlanszy (board m) Bialy) ++ " Czarny: " ++ (show $ wartoscPlanszy (board m) Czarny))
 
         case finalStan m of
             True -> fail("Game over")
             False -> liftIO $ putStrLn (show $ p)>> hFlush stdout
 
-        --liftIO $ putStrLn (show $ p)>> hFlush stdout
+
         put (s++[p])
 
         s <- get
 
+        liftIO $ hPutStrLn stderr ("to opponent = " ++ show p)
+        liftIO $ hPutStrLn stderr ("Bialy: " ++ (show $ wartoscPlanszy (board m) Bialy) ++ " Czarny: " ++ (show $ wartoscPlanszy (board m) Czarny))
 
         liftIO $ printHistory s
 
