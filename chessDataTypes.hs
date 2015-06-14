@@ -12,6 +12,8 @@ import qualified Data.List as List (sort,group,nub,filter,map,length)
 import Text.ParserCombinators.Parsec
 import System.Environment
 import Control.Monad.State
+import System.Process
+
 
 import Data.Maybe
 
@@ -24,8 +26,13 @@ data Szachownica = Szachownica [SzachownicaRow]  deriving (Eq)
 
 {- szachownica, ostatni ruch -}
 data Stan = Stan {
-    board :: Szachownica, poprzedniRuch :: Kolor --, wartosc :: Int
+    board :: Szachownica, poprzedniRuch :: Kolor, --, wartosc :: Int
+    move :: ACN
 } deriving (Eq)
+
+
+newtype ACN = ACN (Char,Char,Char,Char)
+
 
 changeBierkaToChar Puste = '.'
 changeBierkaToChar Krol = 'K'
@@ -90,18 +97,18 @@ y = "rnbqkbnr\n" ++
     "PPPPPPPP\n" ++
     "RNBQKBNR"
 
-z = "rnbqkbnr\n" ++
+z = "rnbq.bnr\n" ++
     "pppppppp\n" ++
-    "...P....\n" ++
     "........\n" ++
     "........\n" ++
-    "........\n" ++
-    "PPP.PPPP\n" ++
+    "...k....\n" ++
+    "..P.....\n" ++
+    "PP.PPPPP\n" ++
     "RNBQKBNR"
 
 sz = utworzSzachownice z
-ss = Stan sz Bialy
-gs = generujDrzewo 2 ss
+ss = Stan sz Czarny (ACN('0','0','0','0'))
+gs = generujDrzewo 3 ss
 {- do testow -}
 
 {- tworzenie szachownicy -}
@@ -332,24 +339,55 @@ doMove szachownica (row,col) (movR, movC) = przesunPionekNaPole szachownica (row
 {- /todo: sprawdzac brzegi planszy przy pobieraniu elementu -}
 
 
-listaRuchowZPola :: Szachownica -> (Int, Int) -> Kolor -> [(Int,Int)]
-listaRuchowZPola szachownica (row,col) kolor = Prelude.filter (sprawdzRuch szachownica (row,col) kolor)  (allMovesForPole  (pionRowCol szachownica (row,col)))
-
-ruchyZPola :: Szachownica -> (Int, Int) -> Kolor -> [Szachownica]
-ruchyZPola szachownica (row,col) kolor =  map (doMove szachownica (row,col)) (listaRuchowZPola szachownica (row,col) kolor)
+listaRuchowZPola :: Szachownica -> (Int, Int) -> Kolor -> [((Int,Int),(Int,Int))]
+listaRuchowZPola szachownica (row,col) kolor = map (\(rowTo,colTo) -> ((row,col),(row+rowTo,col+colTo))) moves
+    where moves = Prelude.filter (sprawdzRuch szachownica (row,col) kolor)  (allMovesForPole  (pionRowCol szachownica (row,col)))
 
 
-ruchyZRzedu :: Szachownica ->  (Int, Int) -> Kolor -> [Szachownica]
+moveToAcn :: (Int, Int) -> (Int, Int) -> ACN
+moveToAcn (row, col) (movR, movC) = ACN (colToAcn col, rowToAcn row, colToAcn ( movC), rowToAcn ( movR ))
+
+colToAcn col = chr (ord 'a' + col)
+rowToAcn row = chr (ord '0' + (-row + 8))
+
+colFromAcn col = ( ord col -ord 'a')
+rowFromAcn row = -(ord row - ord '0') + 8
+{-}
+
+listaRuchowZPolaACN :: Szachownica -> Kolor -> (Int, Int) -> [ACN]
+listaRuchowZPolaACN szachownica kolor (row, col)  = map (moveToAcn (row, col)) ruchy
+    where ruchy = listaRuchowZPola szachownica (row,col) kolor
+
+listaRuchowZSzachownicyACN :: Szachownica -> Kolor -> [ACN]
+listaRuchowZSzachownicyACN szachwnica kolor = foldr (\x xs -> (listaRuchowZPolaACN szachownica kolor x)++xs) [] pola
+    where pola = [(x, y) | x<-[0..7], y<-[0..7]]
+
+
+debugAcnMove :: Szachownica -> [ACN] -> [Szachownica]
+debugAcnMove szachownica [] = []
+debugAcnMove szachownica (ACN(a,b,c,d):xs) = przesunPionekNaPole szachownica (rowFromAcn b, colFromAcn a) (rowFromAcn d, colFromAcn c) : debugAcnMove szachownica xs
+-}
+
+
+ruchyZPola :: Szachownica -> (Int, Int) -> Kolor -> [((Int,Int),(Int,Int))]
+ruchyZPola szachownica (row,col) kolor =  (listaRuchowZPola szachownica (row,col) kolor)
+
+
+ruchyZRzedu :: Szachownica ->  (Int, Int) -> Kolor -> [((Int,Int),(Int,Int))]
 ruchyZRzedu szachownica (row,8) kolor = []
 ruchyZRzedu szachownica (row,col) kolor = ruchyZPola szachownica (row,col) kolor ++ (ruchyZRzedu szachownica (row,col+1) kolor)
 
 ruchyZSzachownicyImpl szachownica (8,0) kolor = []
 ruchyZSzachownicyImpl szachownica (row,col) kolor = ruchyZRzedu szachownica (row,0) kolor  ++ (ruchyZSzachownicyImpl szachownica (row+1,0) kolor)
 
+ruchyZSzachownicy :: Szachownica -> Kolor -> [((Int,Int),(Int,Int))]
 ruchyZSzachownicy szachownica kolor = ruchyZSzachownicyImpl szachownica (0,0) kolor
 
+debugMoves szachownica [] = []
+debugMoves szachownica (((r,c),(rT,cT)):xs) = przesunPionekNaPole szachownica (r, c) (rT, cT) : debugMoves szachownica xs
 
-poczatkowyStan = Stan szachownica Czarny -- (wartoscPlanszy szachownica Czarny)
+poczatkowyRuch = ACN('0','0','0','0');
+poczatkowyStan = Stan szachownica Czarny poczatkowyRuch -- (wartoscPlanszy szachownica Czarny)
 
 drzewoStanow = Node poczatkowyStan []
 
@@ -358,7 +396,7 @@ maKolor kolor Empty = False
 maKolor kolor (Pole bierka kolorb) = kolorb == kolor
 
 
-{- wartosc planszy todo:improve ? -}
+
 wartoscPlanszy :: Szachownica -> Kolor -> Int
 wartoscPlanszy szachownica kolor = foldl (+) 0 wartosciKolor
     where pozycje = [(x, y) | x<-[0..7], y<-[0..7]]
@@ -369,32 +407,32 @@ wartoscPlanszy szachownica kolor = foldl (+) 0 wartosciKolor
 
 
 {- stany gry -}
-utworzStan :: Kolor -> Szachownica -> Stan
-utworzStan kolor ruch = Stan ruch kolor --(wartoscPlanszy ruch kolor)
+utworzStan :: Kolor -> Szachownica -> ((Int,Int),(Int,Int)) -> Stan
+utworzStan kolor szachownica ruch@((r,c),(rT,cT)) = Stan (przesunPionekNaPole szachownica (r, c) (rT, cT)) kolor (moveToAcn (r, c) (rT, cT))--(wartoscPlanszy ruch kolor)
 
-ruchyDoStanow :: [Szachownica] -> Kolor -> [Stan]
-ruchyDoStanow ruchy kolor = map (utworzStan kolor) ruchy
+ruchyDoStanow :: [((Int,Int),(Int,Int))] -> Kolor -> Szachownica -> [Stan]
+ruchyDoStanow ruchy kolor szachownica = map (utworzStan kolor szachownica) ruchy
 
 {- generowanie drzewa gry -}
 generujDrzewo :: Int -> Stan -> Tree Stan
 generujDrzewo 0 poczatkowyStan = Node poczatkowyStan []
 generujDrzewo level poczatkowyStan =  Node poczatkowyStan (map (generujDrzewo $level-1) stanyRuchow)
     where kolor = toggleKolor (poprzedniRuch poczatkowyStan)
-          stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor
+          stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor (board poczatkowyStan)
 
 
 
 
 minimax :: Tree Stan -> (Int, [Stan])
-minimax (Node stan@(Stan b c) []) = (wartoscPlanszy b c, [stan])
-minimax (Node stan@(Stan _ Czarny) xs) = let (v, lst) = maximum (map minimax xs)
+minimax (Node stan@(Stan b c _) []) = (wartoscPlanszy b c, [stan])
+minimax (Node stan@(Stan _ Czarny _) xs) = let (v, lst) = maximum (map minimax xs)
     in (v, stan : lst)
-minimax (Node stan@(Stan _ Bialy) xs) = let (v, lst) = minimum (map minimax xs)
+minimax (Node stan@(Stan _ Bialy _) xs) = let (v, lst) = minimum (map minimax xs)
     in (v, stan : lst)
 
 
 nextMove :: Stan -> Stan
-nextMove stan@(Stan b c)
+nextMove stan@(Stan b c m)
     | finalStan stan = stan
     | otherwise = nextStan
     where drzewo = generujDrzewo 3 stan
@@ -402,7 +440,7 @@ nextMove stan@(Stan b c)
           nextStan = (snd mm)!!1
 
 finalStan::Stan->Bool
-finalStan (Stan b c) = sw < threshold || c > -threshold
+finalStan (Stan b c m) = sw < threshold || c > -threshold
     where sw = wartoscPlanszy b Bialy
           c = wartoscPlanszy b Czarny
 
@@ -414,8 +452,6 @@ game play stan = traceShow (stan) (game p nm)
     where p = not $finalStan stan
           nm = nextMove stan
 
-
-newtype ACN = ACN (Char,Char,Char,Char)
 
 parsePosC :: Parser Char
 parsePosC = oneOf "abcdefgh"
@@ -434,39 +470,109 @@ parseACN = do
 
 type Game a = StateT ([ACN]) IO a
 
+printHistory :: [ACN] -> IO ()
+printHistory h =  do
+--  hPutStrLn stderr "Game history"
+  hPutStrLn stderr (show $ debugAcnMove szachownica h)
+
 
 
 play :: String -> Game ()
 play inp = do
-        case parse parseACN "" inp of
-              Left err -> fail("Wystapil blad")
-              Right acn -> (liftIO $ hPutStrLn stdout $ (show acn))
+
+        s <- get
+        liftIO $ hPutStrLn stderr "Before parse"
+        liftIO $ printHistory s
+
+        case parse parseACN "Blad parsowania" inp of
+              Left err -> fail("koniec")
+              Right acn ->  (liftIO $ hPutStrLn stderr $ "from opponent = " ++ (show acn)) >> put (s++[acn])
+
+        s <- get
+
+        liftIO $ hPutStrLn stderr "After parse"
+        liftIO $ printHistory s
+
+        let m = nextAcnMove szachownica s
+        let p =  (move m)
+
+        liftIO $ hPutStrLn stderr ("to opponent = " ++ show p)
+        liftIO $ hPutStrLn stderr ("Bialy: " ++ (show $ wartoscPlanszy (board m) Bialy) ++ " Czarny: " ++ (show $ wartoscPlanszy (board m) Czarny))
+
+        case finalStan m of
+            True -> fail("Game over")
+            False -> liftIO $ putStrLn (show $ p)>> hFlush stdout
+
+        --liftIO $ putStrLn (show $ p)>> hFlush stdout
+        put (s++[p])
+
+        s <- get
+
+
+        liftIO $ printHistory s
+
+--        liftIO $ hPutStrLn stderr $ "to opponent = " ++ show p
+--        liftIO $ printHistory s
+
+        liftIO $ hPutStrLn stderr "-----------------------------------"
+
+
+
+
+test = [ACN('a','2','a','3'),ACN('a','7','a','5'),ACN('b','7','b','5')]
+
+
+
+nextAcnMove szachownica lst = next
+    where states = doAcnMove szachownica lst Bialy
+          state = last states
+          next = nextMove state
+
+
+doAcnMove :: Szachownica -> [ACN] -> Kolor -> [Stan]
+doAcnMove szachownica [] kolor = []
+doAcnMove szachownica (ruch@(ACN(a,b,c,d)):xs) kolor = (Stan new kolor ruch) : (doAcnMove  new xs k)
+    where new = przesunPionekNaPole szachownica (rowFromAcn b, colFromAcn a) (rowFromAcn d, colFromAcn c)
+          k = toggleKolor kolor
+
+debugAcnMove :: Szachownica -> [ACN] -> Szachownica
+debugAcnMove szachownica [] = szachownica
+debugAcnMove szachownica (ACN(a,b,c,d):xs) =  debugAcnMove new xs
+    where new = przesunPionekNaPole szachownica (rowFromAcn b, colFromAcn a) (rowFromAcn d, colFromAcn c)
 
 
 doPlay :: Game ()
-doPlay = liftIO getContents >>= (mapM_ play) . lines
+doPlay = liftIO getContents  >>= (mapM_ play) . lines
+
+
+poczatkowyRuchBialych = nextMove poczatkowyStan
 
 main :: IO ()
 main = do
   args <- getArgs
   case (listToMaybe args) of
-    Just "b" -> go
-    Just "w" -> putStrLn "a2c4" >> hFlush stdout>> go -- białe wykonują pierwszy ruch
-    Nothing -> go  -- domyślnie grają czarne
-    where go = evalStateT doPlay []
-
-
+    Just "b" -> goblack
+    Just "w" -> putStrLn ( show (move poczatkowyRuchBialych) ) >> hFlush stdout>> go -- białe wykonują pierwszy ruch
+    Nothing -> goblack  -- domyślnie grają czarne
+    where go = evalStateT doPlay [( move poczatkowyRuchBialych)]
+          goblack = evalStateT doPlay []
 
 
 instance Show ACN where
   show (ACN (a,b,c,d)) = a:b:c:d:[]
 
-instance Ord Stan where
-    compare (Stan a c) (Stan b c2) = randomCompare (wartoscPlanszy a c) (wartoscPlanszy b c2)
+instance Eq ACN where
+    ACN (a,b,c,d) == ACN(a2,b2,c2,d2) = a == a2 && b == b2 && c == c2 && d == d2
+
+
 
 instance Show Stan where
-        show (Stan b c) = wyswietlSzachownica b ++ "\nPoprzedni ruch: " ++ show c
 
+        show (Stan b c m) = wyswietlSzachownica b ++ "\nPoprzedni ruch: " ++ show c ++ "\nZrobiony ruch: " ++ show m
+
+
+instance Ord Stan where
+    compare (Stan a c m) (Stan b c2 m2) = randomCompare (wartoscPlanszy a c) (wartoscPlanszy b c2)
 pick :: [a] ->  a
 pick xs = unsafePerformIO(randomRIO (0, Prelude.length xs - 1) >>= return . (xs !!))
 
