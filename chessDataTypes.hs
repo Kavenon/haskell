@@ -18,6 +18,9 @@ import DataTypes
 import Testing
 import Constants
 
+import Data.Tree.Game_tree.Game_tree
+import Data.Tree.Game_tree.Negascout
+
 poleToChar (Empty) = '.'
 poleToChar (Pole bierka kolor)
 	| kolor == Bialy = toUpper bierkaChar
@@ -333,6 +336,17 @@ generujDrzewo level poczatkowyStan =  Node poczatkowyStan (map (generujDrzewo $l
           stanyRuchow = ruchyDoStanow (ruchyZSzachownicy (board poczatkowyStan) kolor) kolor (board poczatkowyStan)
 
 
+{------ AB -----}
+
+generujStany stan = ruchyDoStanow (ruchyZSzachownicy (board stan) kolor) kolor (board stan)
+    where kolor = toggleKolor (poprzedniRuch stan)
+
+instance Game_tree Stan where
+    is_terminal = finalStan
+    node_value o = wartoscPlanszy (board o) (poprzedniRuch o)
+    children o = generujStany o
+
+
 
 
 minimax :: Tree Stan -> (Int, [Stan])
@@ -456,7 +470,7 @@ doPlay :: Game ()
 doPlay = liftIO getContents  >>= (mapM_ play) . lines
 
 
-poczatkowyRuchBialych = nextMove poczatkowyStan
+poczatkowyRuchBialych =  nextMove poczatkowyStan
 
 main :: IO ()
 main = do
@@ -474,7 +488,7 @@ main = do
 
 instance Show Stan where
 
-        show (Stan b c m) = wyswietlSzachownica b ++ "\nPoprzedni ruch: " ++ show c ++ "\nZrobiony ruch: " ++ show m
+        show (Stan b c m) = wyswietlSzachownica b ++ "\nPoprzedni ruch: " ++ show c ++ "\nZrobiony ruch: " ++ show m ++ "\n eval: " ++ (show $ wartoscPlanszy b c)
 
 
 instance Ord Stan where
