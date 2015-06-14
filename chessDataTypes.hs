@@ -9,6 +9,11 @@ import System.Random
 import qualified Data.Foldable as Foldable
 import Debug.Trace (traceShow)
 import qualified Data.List as List (sort,group,nub,filter,map,length)
+import Text.ParserCombinators.Parsec
+import System.Environment
+import Control.Monad.State
+
+import Data.Maybe
 
 data Kolor = Bialy | Czarny deriving (Eq,Show)
 data Bierka = Puste | Krol | Hetman | Pionek | Skoczek | Goniec | Wieza  deriving (Eq,Show)
@@ -380,8 +385,6 @@ generujDrzewo level poczatkowyStan =  Node poczatkowyStan (map (generujDrzewo $l
 
 
 
-
-{- ???chyba trzeba zmienic poprzedniruch na aktualny ruch -}
 minimax :: Tree Stan -> (Int, [Stan])
 minimax (Node stan@(Stan b c) []) = (wartoscPlanszy b c, [stan])
 minimax (Node stan@(Stan _ Czarny) xs) = let (v, lst) = maximum (map minimax xs)
@@ -412,6 +415,51 @@ game play stan = traceShow (stan) (game p nm)
           nm = nextMove stan
 
 
+newtype ACN = ACN (Char,Char,Char,Char)
+
+parsePosC :: Parser Char
+parsePosC = oneOf "abcdefgh"
+
+parsePosN :: Parser Char
+parsePosN = oneOf "12345678"
+
+parseACN :: Parser ACN
+parseACN = do
+          x1 <- parsePosC
+          y1 <- parsePosN
+          x2 <- parsePosC
+          y2 <- parsePosN
+          return $ ACN (x1,y1,x2,y2)
+
+
+type Game a = StateT ([ACN]) IO a
+
+
+
+play :: String -> Game ()
+play inp = do
+        case parse parseACN "" inp of
+              Left err -> fail("Wystapil blad")
+              Right acn -> (liftIO $ hPutStrLn stdout $ (show acn))
+
+
+doPlay :: Game ()
+doPlay = liftIO getContents >>= (mapM_ play) . lines
+
+main :: IO ()
+main = do
+  args <- getArgs
+  case (listToMaybe args) of
+    Just "b" -> go
+    Just "w" -> putStrLn "a2c4" >> hFlush stdout>> go -- białe wykonują pierwszy ruch
+    Nothing -> go  -- domyślnie grają czarne
+    where go = evalStateT doPlay []
+
+
+
+
+instance Show ACN where
+  show (ACN (a,b,c,d)) = a:b:c:d:[]
 
 instance Ord Stan where
     compare (Stan a c) (Stan b c2) = randomCompare (wartoscPlanszy a c) (wartoscPlanszy b c2)
