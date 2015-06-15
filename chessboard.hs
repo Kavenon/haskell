@@ -57,7 +57,7 @@ whoWin (Stan b c m d)
 
 
 wartoscPlanszy :: Szachownica -> Kolor -> Int -> Int
-wartoscPlanszy szachownica kolor movCount =   foldl (+) 0 wartosciKolor
+wartoscPlanszy szachownica kolor movCount =  (((mnoznik kolor) * movCount) `div` 5) + foldl (+) 0 wartosciKolor
     where pozycje = [(x, y) | x<-[0..7], y<-[0..7]]
           pionki = map (pionRowCol szachownica) pozycje
           bierki = map getBierkaFromPole $ Prelude.filter (maKolor kolor) pionki

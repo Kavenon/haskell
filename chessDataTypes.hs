@@ -30,6 +30,7 @@ import Acn
 szachownica = utworzSzachownice wejsciowaPlansza
 
 poczatkowyRuch = ACN('a','1','a','1');
+-- todo : 0?????
 poczatkowyStan = Stan szachownica Czarny poczatkowyRuch 0 -- (wartoscPlanszy szachownica Czarny)
 poczatkowyRuchBialych = nextMinmaxMove poczatkowyStan--pick ( children poczatkowyStan)
 
@@ -66,7 +67,7 @@ nextMinmaxMove :: Stan -> Stan
 nextMinmaxMove stan@(Stan b c m _)
     | finalStan stan = stan
     | otherwise = nextStan
-    where drzewo = generujDrzewo treeDepth stan
+    where drzewo = generujDrzewo treeMinmaxDepth stan
           mm = minimax drzewo
           nextStan = (snd mm)!!1
 
@@ -77,12 +78,25 @@ instance Game_tree Stan where
     node_value o = wartoscPlanszy (board o) (poprzedniRuch o) (DataTypes.count o)
     children o = generujStany o
 
+lastN :: Int -> [a] -> [a]
+
+lastN n xs = let m = List.length xs in Prelude.drop (m-n) xs
+
 {-- game loop --}
 play :: String -> Game ()
 play inp = do
 
         {-- pobierz aktualny stan gry --}
         gameState <- get
+
+        let localState = lastN 4  gameState
+        let infiniteLoop = if (List.length localState) == 4 then sameButReverse (localState!!0) (localState!!2) && sameButReverse (localState!!1) (localState!!3) else False
+
+
+           -- todo : czarne cos za czesto wygrywaja
+
+        liftIO $ hPutStrLn stderr $ (show "LAST 4 " ++ show (localState))
+        liftIO $ hPutStrLn stderr $ (show "Infinite loop " ++ show (infiniteLoop))
 
         {-- dodaj ruch pobrany od przeciwnika --}
         case parse parseACN "" inp of
@@ -93,8 +107,10 @@ play inp = do
         gameState <- get
 
         {-- pobierz aktualny stan gry --}
-        let nextState = nextAcnMove szachownica gameState
-            nextMove = (move nextState)
+        let nextState = if infiniteLoop == True then nextAcnMoveMinmax szachownica gameState else nextAcnMove szachownica gameState
+
+
+        let nextMove = (move nextState)
 
 
         case finalStan nextState of
@@ -134,8 +150,14 @@ main = do
 nextAcnMove szachownica lst = next
     where states = doAcnMove szachownica lst Bialy
           state = last states
-          next = nextMinmaxMove state --fst(negascout state 3)!!1--
+          next = fst(negascout state treeABDepth)!!1--nextMinmaxMove state --fst(negascout state 3)!!1--
 
+
+
+nextAcnMoveMinmax szachownica lst = next
+    where states = doAcnMove szachownica lst Bialy
+          state = last states
+          next = nextMinmaxMove state
 
 doAcnMove :: Szachownica -> [ACN] -> Kolor -> [Stan]
 doAcnMove szachownica [] kolor = []

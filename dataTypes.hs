@@ -25,3 +25,11 @@ instance Show ACN where
 
 instance Eq ACN where
     ACN (a,b,c,d) == ACN(a2,b2,c2,d2) = a == a2 && b == b2 && c == c2 && d == d2
+
+sameButReverse :: ACN -> ACN -> Bool
+sameButReverse (ACN(a,b,c,d))  (ACN(a2,b2,c2,d2))
+    | a == c2 && b == d2 && c == a2 && d == b2 = True
+    | otherwise = False
+
+
+
