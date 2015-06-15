@@ -10,12 +10,12 @@ t = "rnbqkbnr\n" ++
     "PpPBP.KP\n" ++
     "R....Q.R"
 y = "rnbqkbnr\n" ++
-    "ppp.pppp\n" ++
+    "pppppppp\n" ++
+    "....P...\n" ++
     "........\n" ++
     "........\n" ++
     "........\n" ++
-    "...p....\n" ++
-    "PPPPPPPP\n" ++
+    "PPPP.PPP\n" ++
     "RNBQKBNR"
 
 z = "rnbq.bnr\n" ++

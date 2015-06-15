@@ -423,7 +423,7 @@ play inp = do
 
 
         case finalStan m of
-            True -> fail("Game over")
+            True -> fail("Game over: " ++ show p)
             False -> liftIO $ putStrLn (show $ p)>> hFlush stdout
 
 
@@ -451,7 +451,7 @@ test = [ACN('a','2','a','3'),ACN('a','7','a','5'),ACN('b','7','b','5')]
 nextAcnMove szachownica lst = next
     where states = doAcnMove szachownica lst Bialy
           state = last states
-          next = nextMove state
+          next = fst(alpha_beta_search state 4)!!1
 
 
 doAcnMove :: Szachownica -> [ACN] -> Kolor -> [Stan]
@@ -469,8 +469,8 @@ debugAcnMove szachownica (ACN(a,b,c,d):xs) =  debugAcnMove new xs
 doPlay :: Game ()
 doPlay = liftIO getContents  >>= (mapM_ play) . lines
 
-
-poczatkowyRuchBialych =  nextMove poczatkowyStan
+-- todo add random move in the beggining
+poczatkowyRuchBialych = pick (children poczatkowyStan) -- nextMove poczatkowyStan
 
 main :: IO ()
 main = do
