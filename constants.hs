@@ -2,6 +2,7 @@ module Constants where
 
 import DataTypes
 
+
 changeBierkaToChar Puste = '.'
 changeBierkaToChar Krol = 'K'
 changeBierkaToChar Hetman = 'Q'
@@ -31,4 +32,9 @@ bierkaValue Puste = 0
 infinity = 10000::Int
 threshold = 9000::Int
 
+treeDepth = 3::Int
+
+
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
+
+

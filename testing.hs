@@ -1,5 +1,6 @@
 module Testing where
 
+import DataTypes
 {- do testow -}
 t = "rnbqkbnr\n" ++
     "p.pppppp\n" ++
@@ -26,4 +27,16 @@ z = "rnbq.bnr\n" ++
     "..P.....\n" ++
     "PP.PPPPP\n" ++
     "RNBQKBNR"
+
+fin = "...k....\n" ++
+      "........\n" ++
+      "........\n" ++
+      "...p....\n" ++
+      "....K...\n" ++
+      "........\n" ++
+      "........\n" ++
+      "........\n"
+
+test = [ACN('a','2','a','3'),ACN('a','7','a','5'),ACN('b','7','b','5')]
+
 {- do testow -}
