@@ -30,9 +30,9 @@ import Acn
 szachownica = utworzSzachownice wejsciowaPlansza
 
 poczatkowyRuch = ACN('a','1','a','1');
--- todo : 0?????
-poczatkowyStan = Stan szachownica Czarny poczatkowyRuch 0 -- (wartoscPlanszy szachownica Czarny)
-poczatkowyRuchBialych = nextMinmaxMove poczatkowyStan--pick ( children poczatkowyStan)
+
+poczatkowyStan = Stan szachownica Czarny poczatkowyRuch 0
+poczatkowyRuchBialych = nextMinmaxMove poczatkowyStan
 
 
 
@@ -62,6 +62,7 @@ minimax (Node stan@(Stan _ Czarny _ _) xs) = let (v, lst) = maximum (map minimax
 minimax (Node stan@(Stan _ Bialy _ _) xs) = let (v, lst) = minimum (map minimax xs)
     in (v, stan : lst)
 
+
 {- nastepny ruch -}
 nextMinmaxMove :: Stan -> Stan
 nextMinmaxMove stan@(Stan b c m _)
@@ -82,50 +83,61 @@ lastN :: Int -> [a] -> [a]
 
 lastN n xs = let m = List.length xs in Prelude.drop (m-n) xs
 
+
+s1 :: Selector [ACN]
+s1 = (gets stan, \x -> modify (\vs -> vs {stan = x}))
+
+s2 :: Selector Kolor
+s2 = (gets kolor, \x -> modify (\vs -> vs {kolor = x}))
+
+sel :: Selector a -> Game a
+sel = fst
+
 {-- game loop --}
 play :: String -> Game ()
 play inp = do
 
         {-- pobierz aktualny stan gry --}
-        gameState <- get
+        gameState <- sel s1
+        kolor <- sel s2
 
         let localState = lastN 4  gameState
-        let infiniteLoop = if (List.length localState) == 4 then sameButReverse (localState!!0) (localState!!2) && sameButReverse (localState!!1) (localState!!3) else False
+        -- potrzebne do negascout
+        --let infiniteLoop = if (List.length localState) == 4 then sameButReverse (localState!!0) (localState!!2) && sameButReverse (localState!!1) (localState!!3) else False
 
-
-           -- todo : czarne cos za czesto wygrywaja
 
         liftIO $ hPutStrLn stderr $ (show "LAST 4 " ++ show (localState))
-        liftIO $ hPutStrLn stderr $ (show "Infinite loop " ++ show (infiniteLoop))
+        --liftIO $ hPutStrLn stderr $ (show "Infinite loop " ++ show (infiniteLoop))
+        liftIO $ hPutStrLn stderr $ (show "Kolor " ++ show (kolor))
 
         {-- dodaj ruch pobrany od przeciwnika --}
         case parse parseACN "" inp of
-              Left err -> fail(inp)
-              Right acn ->  (liftIO $ hPutStrLn stderr $ "from opponent = " ++ (show acn)) >> put (gameState++[acn])
+              Left err -> if inp == "WIN" then (liftIO $ putStrLn "LOSE">> hFlush stdout >> fail("LOSE")) else (liftIO $ putStrLn "WIN">> hFlush stdout  >> fail("WIN"))
+              Right acn ->  (liftIO $ hPutStrLn stderr $ "from opponent = " ++ (show acn)) >> put (Vars (gameState++[acn]) kolor)
 
         {-- pobierz aktualny stan gry --}
-        gameState <- get
-
-        {-- pobierz aktualny stan gry --}
-        let nextState = if infiniteLoop == True then nextAcnMoveMinmax szachownica gameState else nextAcnMove szachownica gameState
+        gameState <-  sel s1
 
 
+        {-- wybierz odpowiedni algorytm --}
+        {-}let nextState = if infiniteLoop == True then nextAcnMoveMinmax szachownica gameState else nextAcnMove szachownica gameState -}
+        let nextState =  nextAcnMoveMinmax szachownica gameState
         let nextMove = (move nextState)
 
 
         case finalStan nextState of
-                True ->  case whoWin nextState of
-                            Bialy -> liftIO $ putStrLn "WHITE WIN">> hFlush stdout >> fail("WHITE WIN")
-                            Czarny -> liftIO $ putStrLn "BLACK WIN">> hFlush stdout >> fail("BLACK WIN")
+                True ->  if whoWin nextState == kolor
+                            then  liftIO $ putStrLn "WIN">> hFlush stdout >> fail("WIN")
+                            else liftIO $ putStrLn "LOSE">> hFlush stdout >> fail("LOSE")
                 False -> liftIO $ putStrLn (show $ nextMove)>> hFlush stdout
 
 
 
         {-- dodaj swoj ruch do planszy --}
-        put (gameState++[nextMove])
+        put (Vars (gameState++[nextMove]) kolor)
 
         {-- pobierz aktualny stan gry --}
-        gameState <- get
+        gameState <-  sel s1
 
         {-- plansza na stderr --}
         liftIO $ hPutStrLn stderr ("to opponent = " ++ show nextMove)
@@ -144,14 +156,13 @@ main = do
     Just "b" -> goblack
     Just "w" -> putStrLn ( show (move poczatkowyRuchBialych) ) >> hFlush stdout>> go -- białe wykonują pierwszy ruch
     Nothing -> goblack  -- domyślnie grają czarne
-    where go = evalStateT doPlay [( move poczatkowyRuchBialych)]
-          goblack = evalStateT doPlay []
+    where go = evalStateT doPlay (Vars [( move poczatkowyRuchBialych)] Bialy)
+          goblack = evalStateT doPlay (Vars [] Czarny)
 
 nextAcnMove szachownica lst = next
     where states = doAcnMove szachownica lst Bialy
           state = last states
-          next = fst(negascout state treeABDepth)!!1--nextMinmaxMove state --fst(negascout state 3)!!1--
-
+          next = fst(negascout state treeABDepth)!!1
 
 
 nextAcnMoveMinmax szachownica lst = next

@@ -17,7 +17,15 @@ data Stan = Stan {
 
 newtype ACN = ACN (Char,Char,Char,Char)
 
-type Game a = StateT ([ACN]) IO a
+data Vars = Vars {
+   stan :: [ACN],
+   kolor :: Kolor
+}
+
+
+type Game a = StateT Vars IO a
+type Selector a = (Game a, a -> Game ())
+
 
 instance Show ACN where
   show (ACN (a,b,c,d)) = a:b:c:d:[]

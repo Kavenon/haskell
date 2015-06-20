@@ -21,26 +21,26 @@ changeCharToBierka '.' = Puste
 
 {- wartosci -}
 bierkaValue :: Bierka -> Int
---bierkaValue Pionek = 100
---bierkaValue Hetman = 1000
---bierkaValue Skoczek = 350
---bierkaValue Goniec = 350
---bierkaValue Wieza = 525
---bierkaValue Krol = 10000
---bierkaValue Puste = 0
-bierkaValue Pionek = 1
-bierkaValue Hetman = 9
-bierkaValue Skoczek = 3
-bierkaValue Goniec = 3
-bierkaValue Wieza = 5
+bierkaValue Pionek = 100
+bierkaValue Hetman = 1000
+bierkaValue Skoczek = 350
+bierkaValue Goniec = 350
+bierkaValue Wieza = 525
 bierkaValue Krol = 10000
 bierkaValue Puste = 0
+--bierkaValue Pionek = 1
+--bierkaValue Hetman = 9
+--bierkaValue Skoczek = 3
+--bierkaValue Goniec = 3
+--bierkaValue Wieza = 5
+--bierkaValue Krol = 10000
+--bierkaValue Puste = 0
 
 infinity = 10000::Int
 threshold = 9000::Int
 
 treeMinmaxDepth = 3::Int
-treeABDepth = 3::Int -- parzyste dla bialego (musi byc podane parzyste)
+treeABDepth = 5::Int
 
 
 wejsciowaPlansza = "rnbqkbnr\npppppppp\n........\n........\n........\n........\nPPPPPPPP\nRNBQKBNR"
